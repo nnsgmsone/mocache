@@ -8,25 +8,16 @@
 package mocache
 
 import (
-	"runtime"
 	"sync"
 	"unsafe"
 
 	"github.com/matrixorigin/mocache/internal/invariants"
-	"github.com/matrixorigin/mocache/internal/manual"
 )
 
 const (
 	entrySize            = int(unsafe.Sizeof(entry{}))
 	entryAllocCacheLimit = 128
-	// Avoid using runtime.SetFinalizer in race builds as finalizers tickle a bug
-	// in the Go race detector in go1.15 and earlier versions. This requires that
-	// entries are Go allocated rather than manually allocated.
-	//
-	// If cgo is disabled we need to allocate the entries using the Go allocator
-	// and is violates the Go GC rules to put Go pointers (such as the entry
-	// pointer fields) into untyped memory (i.e. a []byte).
-	entriesGoAllocated = invariants.RaceEnabled || !cgoEnabled
+	entriesGoAllocated   = invariants.RaceEnabled
 )
 
 var entryAllocPool = sync.Pool{
@@ -54,14 +45,6 @@ type entryAllocCache struct {
 
 func newEntryAllocCache() *entryAllocCache {
 	c := &entryAllocCache{}
-	if !entriesGoAllocated {
-		// Note the use of a "real" finalizer here (as opposed to a build tag-gated
-		// no-op finalizer). Without the finalizer, objects released from the pool
-		// and subsequently GC'd by the Go runtime would fail to have their manually
-		// allocated memory freed, which results in a memory leak.
-		// lint:ignore SetFinalizer
-		runtime.SetFinalizer(c, freeEntryAllocCache)
-	}
 	return c
 }
 
@@ -76,11 +59,7 @@ func freeEntryAllocCache(obj interface{}) {
 func (c *entryAllocCache) alloc() *entry {
 	n := len(c.entries)
 	if n == 0 {
-		if entriesGoAllocated {
-			return &entry{}
-		}
-		b := manual.New(entrySize)
-		return (*entry)(unsafe.Pointer(&b[0]))
+		return &entry{}
 	}
 	e := c.entries[n-1]
 	c.entries = c.entries[:n-1]
@@ -88,10 +67,6 @@ func (c *entryAllocCache) alloc() *entry {
 }
 
 func (c *entryAllocCache) dealloc(e *entry) {
-	if !entriesGoAllocated {
-		buf := (*[manual.MaxArrayLen]byte)(unsafe.Pointer(e))[:entrySize:entrySize]
-		manual.Free(buf)
-	}
 }
 
 func (c *entryAllocCache) free(e *entry) {

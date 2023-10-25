@@ -8,19 +8,17 @@ package manual
 import "C"
 import "unsafe"
 
+const (
+	// MaxArrayLen is a safe maximum length for slices on this architecture.
+	MaxArrayLen = 1<<50 - 1
+)
+
 // The go:linkname directives provides backdoor access to private functions in
 // the runtime. Below we're accessing the throw function.
 
 //go:linkname throw runtime.throw
 func throw(s string)
 
-// TODO(peter): Rather than relying an C malloc/free, we could fork the Go
-// runtime page allocator and allocate large chunks of memory using mmap or
-// similar.
-
-// New allocates a slice of size n. The returned slice is from manually managed
-// memory and MUST be released by calling Free. Failure to do so will result in
-// a memory leak.
 func New(n int) []byte {
 	if n == 0 {
 		return make([]byte, 0)
@@ -48,7 +46,6 @@ func New(n int) []byte {
 	return (*[MaxArrayLen]byte)(unsafe.Pointer(ptr))[:n:n]
 }
 
-// Free frees the specified slice.
 func Free(b []byte) {
 	if cap(b) != 0 {
 		if len(b) == 0 {
