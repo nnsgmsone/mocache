@@ -27,7 +27,7 @@ import (
 	"sync/atomic"
 
 	"github.com/cespare/xxhash"
-	"github.com/matrixorigin/mocache/internal/invariants"
+	"github.com/nnsgmsone/mocache/internal/invariants"
 )
 
 type CacheData interface {

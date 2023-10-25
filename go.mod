@@ -1,4 +1,4 @@
-module github.com/matrixorigin/mocache
+module github.com/nnsgmsone/mocache
 
 go 1.20
 

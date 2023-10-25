@@ -11,7 +11,7 @@ import (
 	"sync"
 	"unsafe"
 
-	"github.com/matrixorigin/mocache/internal/invariants"
+	"github.com/nnsgmsone/mocache/internal/invariants"
 )
 
 const (

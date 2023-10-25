@@ -11,8 +11,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/matrixorigin/mocache/internal/invariants"
-	"github.com/matrixorigin/mocache/internal/manual"
+	"github.com/nnsgmsone/mocache/internal/invariants"
+	"github.com/nnsgmsone/mocache/internal/manual"
 )
 
 // newValue creates a Value with a manually managed buffer of size n.

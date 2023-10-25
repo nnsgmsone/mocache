@@ -10,7 +10,7 @@ package mocache
 import (
 	"unsafe"
 
-	"github.com/matrixorigin/mocache/internal/manual"
+	"github.com/nnsgmsone/mocache/internal/manual"
 )
 
 const valueSize = int(unsafe.Sizeof(Value{}))

@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/matrixorigin/mocache/internal/invariants"
+	"github.com/nnsgmsone/mocache/internal/invariants"
 )
 
 // When the "invariants" or "tracing" build tags are enabled, we need to
