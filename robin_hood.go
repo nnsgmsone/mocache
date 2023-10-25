@@ -11,16 +11,13 @@ import (
 	"runtime/debug"
 	"strings"
 	"time"
-	"unsafe"
 
 	"github.com/cespare/xxhash"
 	"github.com/matrixorigin/mocache/internal/invariants"
-	"github.com/matrixorigin/mocache/internal/manual"
 )
 
 var hashSeed = uint64(time.Now().UnixNano())
 
-// Fibonacci hash: https://probablydance.com/2018/06/16/fibonacci-hashing-the-optimization-that-the-world-forgot-or-a-better-alternative-to-integer-modulo/
 func robinHoodHash(k key, shift uint32) uint32 {
 	const m = 11400714819323198485
 	h := hashSeed
@@ -51,27 +48,22 @@ type robinHoodEntry struct {
 }
 
 type robinHoodEntries struct {
-	ptr unsafe.Pointer
-	len uint32
+	entries []robinHoodEntry
+	len     uint32
 }
 
 func newRobinHoodEntries(n uint32) robinHoodEntries {
-	size := uintptr(n) * unsafe.Sizeof(robinHoodEntry{})
 	return robinHoodEntries{
-		ptr: unsafe.Pointer(&(manual.New(int(size)))[0]),
-		len: n,
+		entries: make([]robinHoodEntry, n),
+		len:     n,
 	}
 }
 
 func (e robinHoodEntries) at(i uint32) *robinHoodEntry {
-	return (*robinHoodEntry)(unsafe.Pointer(uintptr(e.ptr) +
-		uintptr(i)*unsafe.Sizeof(robinHoodEntry{})))
+	return &e.entries[i]
 }
 
 func (e robinHoodEntries) free() {
-	size := uintptr(e.len) * unsafe.Sizeof(robinHoodEntry{})
-	buf := (*[manual.MaxArrayLen]byte)(e.ptr)[:size:size]
-	manual.Free(buf)
 }
 
 // robinHoodMap is an implementation of Robin Hood hashing. Robin Hood hashing
@@ -133,15 +125,6 @@ func maxDistForSize(size uint32) uint32 {
 func newRobinHoodMap(initialCapacity int) *robinHoodMap {
 	m := &robinHoodMap{}
 	m.init(initialCapacity)
-
-	// Note: this is a no-op if invariants are disabled or race is enabled.
-	invariants.SetFinalizer(m, func(obj interface{}) {
-		m := obj.(*robinHoodMap)
-		if m.entries.ptr != nil {
-			fmt.Fprintf(os.Stderr, "%p: robin-hood map not freed\n", m)
-			os.Exit(1)
-		}
-	})
 	return m
 }
 
@@ -154,10 +137,6 @@ func (m *robinHoodMap) init(initialCapacity int) {
 }
 
 func (m *robinHoodMap) free() {
-	if m.entries.ptr != nil {
-		m.entries.free()
-		m.entries.ptr = nil
-	}
 }
 
 func (m *robinHoodMap) rehash(size uint32) {
@@ -174,10 +153,6 @@ func (m *robinHoodMap) rehash(size uint32) {
 		if e.value != nil {
 			m.Put(e.key, e.value)
 		}
-	}
-
-	if oldEntries.ptr != nil {
-		oldEntries.free()
 	}
 }
 
