@@ -869,11 +869,6 @@ func (c *Cache) AllocWithKey(id string, offset uint64, n int) CacheData {
 }
 
 func (c *shard) Alloc(n int) CacheData {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	for c.targetSize() <= c.sizeHot+c.sizeCold+int64(n) && c.handCold != nil {
-		c.runHandCold(c.countCold, c.sizeCold)
-	}
 	return Handle{value: Alloc(n)}
 }
 
