@@ -126,6 +126,9 @@ type shard struct {
 	countHot  int64
 	countCold int64
 	countTest int64
+
+	postSet   func(string, uint64)
+	postEvict func(string, uint64)
 }
 
 func (c *shard) Get(id string, offset uint64) Handle {
@@ -159,6 +162,9 @@ func (c *shard) Set(id string, offset uint64, value *Value) Handle {
 
 	switch {
 	case e == nil:
+		if c.postSet != nil {
+			c.postSet(k.id, k.offset)
+		}
 		// no cache entry? add it
 		e = newEntry(c, k, int64(len(value.buf)))
 		e.setValue(value)
@@ -615,6 +621,9 @@ func (c *shard) runHandTest() {
 
 	e := c.handTest
 	if e.ptype == etTest {
+		if c.postEvict != nil {
+			c.postEvict(e.key.id, e.key.offset)
+		}
 		c.sizeTest -= e.size
 		c.countTest--
 		c.coldTarget -= e.size
@@ -699,7 +708,7 @@ type Cache struct {
 //	c := cache.New(...)
 //	defer c.Unref()
 //	d, err := pebble.Open(pebble.Options{Cache: c})
-func New(size int64) *Cache {
+func New(size int64, postSet, postEvict func(string, uint64)) *Cache {
 	// How many cache shards should we create?
 	//
 	// Note that the probability two processors will try to access the same
@@ -727,7 +736,7 @@ func New(size int64) *Cache {
 	if m > 4 && int(size)/m < minimumShardSize {
 		m = 4
 	}
-	c := newShards(size, m)
+	c := newShards(size, m, postSet, postEvict)
 	go func() { // periodically output the status of the cache
 		var ms runtime.MemStats
 
@@ -750,7 +759,7 @@ func New(size int64) *Cache {
 	return c
 }
 
-func newShards(size int64, shards int) *Cache {
+func newShards(size int64, shards int, postSet, postEvict func(string, uint64)) *Cache {
 	c := &Cache{
 		maxSize: size,
 		shards:  make([]shard, shards),
@@ -760,6 +769,8 @@ func newShards(size int64, shards int) *Cache {
 	c.trace("alloc", c.refs.Load())
 	for i := range c.shards {
 		c.shards[i] = shard{
+			postSet:    postSet,
+			postEvict:  postEvict,
 			maxSize:    size / int64(len(c.shards)),
 			coldTarget: size / int64(len(c.shards)),
 		}
