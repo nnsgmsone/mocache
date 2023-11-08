@@ -741,17 +741,17 @@ func New(size int64, postSet, postEvict func(string, uint64)) *Cache {
 		var ms runtime.MemStats
 
 		MB := uint64(1 << 20)
-		runtime.ReadMemStats(&ms)
 		ticker := time.NewTicker(time.Minute)
 		for {
 			for {
 				select {
 				case <-ticker.C:
 					mc := c.Metrics()
-					fmt.Fprintf(os.Stderr, "Limit: %vMB, Size: %vMB, Count: %v, Hits: %v, Misses: %v, AllocSize: %vMB",
-						uint64(size)/MB, uint64(mc.Size)/MB, mc.Count, mc.Hits, mc.Misses, atomic.LoadInt64(&manual.AllocSize))
-					fmt.Fprintf(os.Stderr, "HeapAlloc:%dMB HeapSys:%dMB HeapIdle:%dMB HeapReleased:%dMB HeapInuse:%dMB\n",
-						ms.HeapAlloc/MB, ms.HeapSys/MB, ms.HeapIdle/MB, ms.HeapReleased/MB, ms.HeapInuse/MB)
+					runtime.ReadMemStats(&ms)
+					fmt.Fprintf(os.Stderr, "Limit: %vMB, Size: %vMB, Count: %v, Hits: %v, Misses: %v, AllocSize: %vMB;",
+						uint64(size)/MB, uint64(mc.Size)/MB, mc.Count, mc.Hits, mc.Misses, uint64(atomic.LoadInt64(&manual.AllocSize))/MB)
+					fmt.Fprintf(os.Stderr, "HeapAlloc:%dMB, HeapSys:%dMB, HeapIdle:%dMB, HeapInuse:%dMB\n",
+						ms.HeapAlloc/MB, ms.HeapSys/MB, (ms.HeapIdle-ms.HeapReleased)/MB, ms.HeapInuse/MB)
 				}
 			}
 		}
