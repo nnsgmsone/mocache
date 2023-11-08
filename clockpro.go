@@ -729,6 +729,10 @@ func New(size int64) *Cache {
 	}
 	c := newShards(size, m)
 	go func() { // periodically output the status of the cache
+		var ms runtime.MemStats
+
+		MB := uint64(1 << 20)
+		runtime.ReadMemStats(&ms)
 		ticker := time.NewTicker(time.Minute)
 		for {
 			for {
@@ -736,7 +740,9 @@ func New(size int64) *Cache {
 				case <-ticker.C:
 					mc := c.Metrics()
 					fmt.Fprintf(os.Stderr, "Limit: %vMB, Size: %vMB, Count: %v, Hits: %v, Misses: %v, AllocSize: %vMB",
-						float64(size)/(1<<20), float64(mc.Size)/(1<<20), mc.Count, mc.Hits, mc.Misses, atomic.LoadInt64(&manual.AllocSize))
+						uint64(size)/MB, uint64(mc.Size)/MB, mc.Count, mc.Hits, mc.Misses, atomic.LoadInt64(&manual.AllocSize))
+					fmt.Fprintf(os.Stderr, "HeapAlloc:%dMB HeapSys:%dMB HeapIdle:%dMB HeapReleased:%dMB HeapInuse:%dMB\n",
+						ms.HeapAlloc/MB, ms.HeapSys/MB, ms.HeapIdle/MB, ms.HeapReleased/MB, ms.HeapInuse/MB)
 				}
 			}
 		}
