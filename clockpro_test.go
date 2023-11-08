@@ -23,7 +23,7 @@ func testValue(cache *Cache, s string, repeat int) *Value {
 }
 
 func TestCacheDelete(t *testing.T) {
-	cache := newShards(100, 1)
+	cache := newShards(100, 1, nil, nil)
 	defer cache.Unref()
 
 	cache.Set("10", 0, testValue(cache, "a", 5)).Release()
@@ -54,7 +54,7 @@ func TestCacheDelete(t *testing.T) {
 }
 
 func TestEvictFile(t *testing.T) {
-	cache := newShards(100, 1)
+	cache := newShards(100, 1, nil, nil)
 	defer cache.Unref()
 
 	cache.Set("10", 0, testValue(cache, "a", 5)).Release()
@@ -82,7 +82,7 @@ func TestEvictFile(t *testing.T) {
 func TestEvictAll(t *testing.T) {
 	// Verify that it is okay to evict all of the data from a cache. Previously
 	// this would trigger a nil-pointer dereference.
-	cache := newShards(100, 1)
+	cache := newShards(100, 1, nil, nil)
 	defer cache.Unref()
 
 	cache.Set("1", 0, testValue(cache, "a", 101)).Release()
@@ -90,7 +90,7 @@ func TestEvictAll(t *testing.T) {
 }
 
 func TestMultipleDBs(t *testing.T) {
-	cache := newShards(100, 1)
+	cache := newShards(100, 1, nil, nil)
 	defer cache.Unref()
 
 	cache.Set("1", 0, testValue(cache, "a", 5)).Release()
@@ -115,14 +115,14 @@ func TestMultipleDBs(t *testing.T) {
 }
 
 func TestZeroSize(t *testing.T) {
-	cache := newShards(0, 1)
+	cache := newShards(0, 1, nil, nil)
 	defer cache.Unref()
 
 	cache.Set("1", 0, testValue(cache, "a", 5)).Release()
 }
 
 func TestReserve(t *testing.T) {
-	cache := newShards(4, 2)
+	cache := newShards(4, 2, nil, nil)
 	defer cache.Unref()
 
 	cache.Set("1", 0, testValue(cache, "a", 1)).Release()
@@ -143,7 +143,7 @@ func TestReserve(t *testing.T) {
 }
 
 func TestReserveDoubleRelease(t *testing.T) {
-	cache := newShards(100, 1)
+	cache := newShards(100, 1, nil, nil)
 	defer cache.Unref()
 
 	r := cache.Reserve(10)
@@ -165,7 +165,7 @@ func TestReserveDoubleRelease(t *testing.T) {
 }
 
 func TestCacheStressSetExisting(t *testing.T) {
-	cache := newShards(1, 1)
+	cache := newShards(1, 1, nil, nil)
 	defer cache.Unref()
 
 	var wg sync.WaitGroup
@@ -185,7 +185,7 @@ func TestCacheStressSetExisting(t *testing.T) {
 func BenchmarkCacheGet(b *testing.B) {
 	const size = 100000
 
-	cache := newShards(size, 1)
+	cache := newShards(size, 1, nil, nil)
 	defer cache.Unref()
 
 	for i := 0; i < size; i++ {
@@ -212,7 +212,7 @@ func TestReserveColdTarget(t *testing.T) {
 	// then we unnecessarily remove nodes from the
 	// cache.
 
-	cache := newShards(100, 1)
+	cache := newShards(100, 1, nil, nil)
 	defer cache.Unref()
 
 	for i := 0; i < 50; i++ {
