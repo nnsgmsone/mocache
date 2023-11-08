@@ -25,9 +25,11 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/cespare/xxhash"
 	"github.com/matrixorigin/mocache/internal/invariants"
+	"github.com/matrixorigin/mocache/internal/manual"
 )
 
 type CacheData interface {
@@ -725,7 +727,21 @@ func New(size int64) *Cache {
 	if m > 4 && int(size)/m < minimumShardSize {
 		m = 4
 	}
-	return newShards(size, m)
+	c := newShards(size, m)
+	go func() { // periodically output the status of the cache
+		ticker := time.NewTicker(time.Minute)
+		for {
+			for {
+				select {
+				case <-ticker.C:
+					mc := c.Metrics()
+					fmt.Fprintf(os.Stderr, "Limit: %vMB, Size: %vMB, Count: %v, Hits: %v, Misses: %v, AllocSize: %vMB",
+						float64(size)/(1<<20), float64(mc.Size)/(1<<20), mc.Count, mc.Hits, mc.Misses, atomic.LoadInt64(&manual.AllocSize))
+				}
+			}
+		}
+	}()
+	return c
 }
 
 func newShards(size int64, shards int) *Cache {
@@ -869,6 +885,9 @@ func (c *Cache) AllocWithKey(id string, offset uint64, n int) CacheData {
 }
 
 func (c *shard) Alloc(n int) CacheData {
+	c.mu.Lock()
+	c.evict()
+	c.mu.Unlock()
 	return Handle{value: Alloc(n)}
 }
 
