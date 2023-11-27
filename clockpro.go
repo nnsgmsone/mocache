@@ -32,6 +32,13 @@ import (
 	"github.com/matrixorigin/mocache/internal/manual"
 )
 
+const (
+	// SchedCount is the number of iterations to run before calling
+	SchedCount = 8192
+	// SchedCountMask is the mask used to determine when to call runtime.Gosched.
+	SchedCountMask = SchedCount - 1
+)
+
 type CacheData interface {
 	Release()
 	Get() []byte
@@ -536,7 +543,10 @@ func (c *shard) metaEvict(e *entry) (evictedValue *Value) {
 }
 
 func (c *shard) evict() {
-	for c.targetSize() <= c.sizeHot+c.sizeCold && c.handCold != nil {
+	for i := 0; c.targetSize() <= c.sizeHot+c.sizeCold && c.handCold != nil; i++ {
+		if i&SchedCountMask == SchedCountMask {
+			runtime.Gosched()
+		}
 		c.runHandCold(c.countCold, c.sizeCold)
 	}
 }
@@ -576,7 +586,10 @@ func (c *shard) runHandCold(countColdDebug, sizeColdDebug int64) {
 
 	c.handCold = c.handCold.next()
 
-	for c.targetSize()-c.coldTarget <= c.sizeHot && c.handHot != nil {
+	for i := 0; c.targetSize()-c.coldTarget <= c.sizeHot && c.handHot != nil; i++ {
+		if i&SchedCountMask == SchedCountMask {
+			runtime.Gosched()
+		}
 		c.runHandHot()
 	}
 }
